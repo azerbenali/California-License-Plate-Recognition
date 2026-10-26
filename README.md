@@ -1,272 +1,216 @@
-# California License Plate Recognition
+<p align="center">
+  <img src="docs/assets/banner.svg" width="100%" alt="California License Plate Recognition — detect, rectify, read">
+</p>
 
-[![CI](https://github.com/azerbenali/California-License-Plate-Recognition/actions/workflows/ci.yml/badge.svg)](https://github.com/azerbenali/California-License-Plate-Recognition/actions/workflows/ci.yml)
+<p align="center">
+  <a href="../../actions/workflows/ci.yml"><img src="../../actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white" alt="C++17">
+  <img src="https://img.shields.io/badge/inference-ncnn-2F80ED" alt="ncnn">
+  <img src="https://img.shields.io/badge/training-PyTorch-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/license-Apache%202.0-3fb950" alt="Apache 2.0">
+</p>
 
-**Author:** Azer Ben Ali · 2026 · Apache License 2.0
+<p align="center">
+  <a href="#demo">Demo</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#training">Training</a> ·
+  <a href="#project-structure">Structure</a>
+</p>
 
-An end-to-end automatic license plate recognition (ALPR) system for California
-plates: a YOLO pose model finds each plate and its four corners, the plate is
-perspective-corrected, and an LPRNet-style CTC model reads the characters. The
-result is checked against California plate layouts and common OCR confusions
-are corrected. Inference runs on CPU with [ncnn](https://github.com/Tencent/ncnn),
-in C++17, with a core library that has no OpenCV dependency so it can be
-reused on mobile.
+---
 
-```mermaid
-flowchart LR
-    A[Image / video frame] --> B[Detector<br/>YOLO pose, 1 class,<br/>4 corner keypoints]
-    B --> C[Rectify<br/>perspective warp<br/>to 240x120]
-    C --> D[Crop character band<br/>resize to 94x24]
-    D --> E[Recognizer<br/>LPRNet + CTC]
-    E --> F[California layout<br/>check and correction]
-    F --> G["7ABC123"]
-```
+## Demo
 
-## Sample photos
+<p align="center">
+  <img src="docs/assets/demo.gif" width="760" alt="Animation: each sample photo is scanned, the plate is detected, rectified and read">
+</p>
 
-Three labeled photos in [`samples/`](samples/) exercise the whole system:
-labels → dataset tools → training → ncnn export → detection and reading.
-
-<table>
+<table align="center">
   <tr>
-    <td align="center"><img src="samples/images/ca_plate_01.jpg" width="260" alt="Grey Mercedes with a black California plate 9EPW746"></td>
-    <td align="center"><img src="samples/images/ca_plate_02.jpg" width="260" alt="Silver Infiniti at night with a white California plate 201AAA1"></td>
-    <td align="center"><img src="samples/images/ca_plate_03.jpg" width="260" alt="Silver Infiniti seen at an angle with a black legacy plate PERC50"></td>
+    <th></th>
+    <th><code>9EPW746</code></th>
+    <th><code>201AAA1</code></th>
+    <th><code>PERC50</code></th>
   </tr>
   <tr>
-    <td align="center"><code>9EPW746</code><br/>1980–2026 layout, black plate</td>
-    <td align="center"><code>201AAA1</code><br/>2026+ layout, at night</td>
-    <td align="center"><code>PERC50</code><br/>personalized, legacy black plate, angled</td>
+    <td><b>Photo</b></td>
+    <td><img src="samples/images/ca_plate_01.jpg" width="230" alt="Car with a black California plate"></td>
+    <td><img src="samples/images/ca_plate_02.jpg" width="230" alt="Car at night with a white California plate"></td>
+    <td><img src="samples/images/ca_plate_03.jpg" width="230" alt="Car at an angle with a black legacy plate"></td>
+  </tr>
+  <tr>
+    <td><b>Detect</b></td>
+    <td><img src="docs/results/ca_plate_01_detail.jpg" width="230" alt="Detected plate 9EPW746"></td>
+    <td><img src="docs/results/ca_plate_02_detail.jpg" width="230" alt="Detected plate 201AAA1"></td>
+    <td><img src="docs/results/ca_plate_03_detail.jpg" width="230" alt="Detected plate PERC50"></td>
+  </tr>
+  <tr>
+    <td><b>Rectify</b></td>
+    <td align="center"><img src="docs/results/ca_plate_01_plate.png" width="180" alt="Rectified plate 9EPW746"></td>
+    <td align="center"><img src="docs/results/ca_plate_02_plate.png" width="180" alt="Rectified plate 201AAA1"></td>
+    <td align="center"><img src="docs/results/ca_plate_03_plate.png" width="180" alt="Rectified plate PERC50"></td>
+  </tr>
+  <tr>
+    <td><b>Read</b></td>
+    <td align="center">✅ <code>9EPW746</code><br><sub>1980–2026 · conf 1.00</sub></td>
+    <td align="center">✅ <code>201AAA1</code><br><sub>2026+ · conf 1.00</sub></td>
+    <td align="center">✅ <code>PERC50</code><br><sub>personalized · conf 0.94</sub></td>
   </tr>
 </table>
 
-## Demo run
+> [!NOTE]
+> Demo models were trained on synthetic plates plus these 3 photos: a check that every stage works, not an accuracy benchmark.
+> Recognizer: **99.2 %** exact reads on 1,000 held-out synthetic plates. Full output: [`docs/results/results.json`](docs/results/results.json).
 
-These results come from running this repository's training pipeline once,
-on a 2-core CPU, with the photos above, then reading the photos with the
-exported ncnn models (`training.tools.run_ncnn`):
+## How it works
 
-| Detection (detail) | Rectified plate | Read | Layout | Confidence (read / detect) |
-|---|---|---|---|---|
-| <img src="docs/results/ca_plate_01_detail.jpg" width="300" alt="Detected plate 9EPW746"> | <img src="docs/results/ca_plate_01_plate.png" width="180" alt="Rectified plate 9EPW746"> | `9EPW746` | 1980–2026 | 1.00 / 0.63 |
-| <img src="docs/results/ca_plate_02_detail.jpg" width="300" alt="Detected plate 201AAA1"> | <img src="docs/results/ca_plate_02_plate.png" width="180" alt="Rectified plate 201AAA1"> | `201AAA1` | 2026+ | 1.00 / 0.92 |
-| <img src="docs/results/ca_plate_03_detail.jpg" width="300" alt="Detected plate PERC50"> | <img src="docs/results/ca_plate_03_plate.png" width="180" alt="Rectified plate PERC50"> | `PERC50` | personalized | 0.94 / 0.96 |
+```mermaid
+flowchart LR
+    A[Image / video] --> B[Detect<br/>YOLO pose<br/>4 corners]
+    B --> C[Rectify<br/>warp to 240x120]
+    C --> D[Character band<br/>94x24]
+    D --> E[Read<br/>LPRNet + CTC]
+    E --> F[California<br/>layout check]
+    F --> G["7ABC123"]
+```
 
-Green outline: the text fits a California layout. Orange: it does not
-(here a personalized plate), so it is reported exactly as read. The full
-output, with corner coordinates, is in [`docs/results/results.json`](docs/results/results.json).
-How the models were trained:
+| | |
+|---|---|
+| **Detect** | Multi-plate YOLO pose detector with 4 corner keypoints |
+| **Rectify** | Perspective correction, so tilted and skewed plates read like head-on ones |
+| **Read** | LPRNet-style CTC recognizer, 37 classes |
+| **Check** | Fixes `8↔B`, `0↔O`, `2↔Z` by position; knows I, O, Q rules; personalized plates pass unchanged |
+| **Run** | C++17 on CPU with ncnn; core library free of OpenCV, portable to mobile |
+| **Inputs** | Image, video, webcam → text, JSON, annotated output, plate crops |
 
-- **Recognizer**: one epoch on 20,000 synthetic plates, then three epochs on
-  the synthetic plates mixed with the 3 real crops (each used 300 times per
-  epoch, augmented). It reads **99.2 %** of 1,000 held-out synthetic plates
-  exactly (character error rate 0.12 %). This model is included as
-  [`models/demo/`](models/README.md).
-- **Detector**: a small YOLO pose model fine-tuned on the 3 photos
-  (`prepare_dataset --repeat 4`). Its corner confidence is still below the
-  0.5 threshold on these photos, so the pipeline rectified them from the
-  detected box, which works for plates seen almost head-on. It is not
-  included: train your own (step 2 below).
-
-All three photos were in the training data, so this shows that every stage
-works and fits together, **not** how well the system reads plates it has
-never seen. That needs hundreds of labeled photos.
-
-## Features
-
-- **Multi-plate detection** with corner keypoints, so tilted and skewed plates are rectified before reading.
-- **California-aware decoding**: recognizes the 2026+ `123ABC1` layout, the 1980–2026 `1ABC234` layout, commercial `1A23456` and trailer `1AB1234`; fixes confusions such as `8↔B`, `0↔O`, `2↔Z` by position, and knows that I, O and Q are not used as the first or third letter of the letter block. Personalized plates are passed through unchanged.
-- **Image, video and webcam** input; annotated output image/video; JSON output; saving of rectified crops to grow the training set.
-- **Training pipeline** in PyTorch for the recognizer (CUDA, Apple Silicon MPS, or CPU) and for the YOLO pose detector, both exported to ncnn.
-- **Synthetic plates** in the standard white design and the dark designs seen on real cars (black, legacy black/blue/yellow), with stickers and dealer frames, for pretraining.
-- **One command from labeled photos to training sets** (`prepare_dataset`), and a Python ncnn runner (`run_ncnn`) to check new models without building the C++ app.
-- **Same preprocessing in training and deployment**, enforced by a test that compares the C++ and Python constants.
-- **Unit tests** for decoding, geometry, warping and detector-output parsing, run on every push by GitHub Actions together with a full build of the app that reads the sample plates.
-
-## California plate layouts handled
+### California layouts
 
 | Layout | Example | Pattern |
 |---|---|---|
-| Passenger, March 2026 onward | `123ABC1` | 3 digits, 3 letters, 1 digit |
-| Passenger, 1980–2026 | `1ABC234` | 1 digit, 3 letters, 3 digits |
-| Commercial | `1A23456` | 1 digit, 1 letter, 5 digits |
-| Trailer | `1AB1234` | 1 digit, 2 letters, 4 digits |
+| Passenger, March 2026 onward | `123ABC1` | 3 digits · 3 letters · 1 digit |
+| Passenger, 1980–2026 | `1ABC234` | 1 digit · 3 letters · 3 digits |
+| Commercial | `1A23456` | 1 digit · 1 letter · 5 digits |
+| Trailer | `1AB1234` | 1 digit · 2 letters · 4 digits |
 | Personalized | `HELLO` | 2–7 characters, reported as read |
 
-## Repository layout
+## Quick start
 
-```
-include/calpr/        public headers
-  config.hpp          shared constants (mirrored in training/common/config.py)
-  plate_decoder.hpp   CTC decoding + California layout check/correction
-  geometry.hpp        boxes, NMS, corner ordering, letterbox, homography
-  image.hpp           BGR image view, row crop, perspective warp
-  yolo_pose.hpp       YOLO pose output decoding (classic and end-to-end heads)
-  detector.hpp  recognizer.hpp  pipeline.hpp
-src/                  ncnn implementations + app/main.cpp (OpenCV CLI)
-tests/                C++ and Python unit tests
-training/
-  common/             config, preprocessing and layout rules shared by all scripts
-  recognition/        LPRNet model, dataset, training, ncnn export
-  detection/          detector training and ncnn export (YOLO pose)
-  tools/              dataset preparation, crop maker, synthetic plates, ncnn runner
-samples/              3 labeled photos (images, corner labels, plate texts)
-models/               put exported .param/.bin files here; demo/ has a smoke-test recognizer
-docs/results/         output of the demo run shown above
-.github/workflows/    CI: unit tests, full build, sample plates
-```
-
-## Build
-
-Requirements: CMake 3.16+, a C++17 compiler, [ncnn](https://github.com/Tencent/ncnn)
-(prebuilt packages are on its releases page), and OpenCV 4 for the app.
+**Requirements:** CMake 3.16+, C++17 compiler, [ncnn](https://github.com/Tencent/ncnn), OpenCV 4.
 
 ```bash
+# macOS: brew install ncnn opencv
 cmake -B build -Dncnn_DIR=/path/to/ncnn/lib/cmake/ncnn -DOpenCV_DIR=/path/to/opencv
 cmake --build build --config Release
-cd build && ctest -C Release
+(cd build && ctest -C Release)
 ```
 
-On macOS with Homebrew, `brew install ncnn opencv` usually lets CMake find both
-without the `-D` options. To build only the unit tests (no dependencies):
-`cmake -B build -DCALPR_BUILD_LIBRARY=OFF`. The CI workflow
-(`.github/workflows/ci.yml`) shows a complete Ubuntu build with the official
-ncnn release package.
-
-## Run
-
-Try the recognizer right after building, on a rectified sample plate, with
-the demo model (see [`models/README.md`](models/README.md)):
+Read a sample plate with the demo recognizer:
 
 ```bash
 ./build/calpr_app --image docs/results/ca_plate_02_plate.png \
     --rec-param models/demo/ca_lprnet.ncnn.param --rec-bin models/demo/ca_lprnet.ncnn.bin
+# 201AAA1  (Passenger (2026+, 123ABC1), rec ..., det ...)
 ```
 
-With your own models:
+<details>
+<summary><b>More ways to run</b></summary>
 
 ```bash
-# Full pipeline on a photo
+# Full pipeline on a photo (your trained models)
 ./build/calpr_app --image car.jpg \
     --det-param models/model.ncnn.param --det-bin models/model.ncnn.bin \
     --rec-param models/ca_lprnet.ncnn.param --rec-bin models/ca_lprnet.ncnn.bin \
     --out result.jpg
 
-# Video file or webcam, JSON lines out
+# Video or webcam, JSON lines out
 ./build/calpr_app --video traffic.mp4 --det-param ... --det-bin ... \
     --rec-param ... --rec-bin ... --json --out annotated.mp4
 ./build/calpr_app --camera 0 ... --show
 
-# Recognition only, on an already cropped plate
-./build/calpr_app --image plate.png --rec-param ... --rec-bin ...
-```
-
-Example output:
-
-```
-7ABC123  (Passenger (1980-2026, 1ABC234), rec 0.97, det 0.91)
-```
-
-Run `calpr_app --help` for every option (thresholds, threads, blob names,
-`--save-crops DIR` to collect rectified plates for labeling).
-
-### From Python, without the C++ build
-
-`run_ncnn` runs the same steps (letterbox, YOLO pose decoding, rectification,
-character band, LPRNet, California layout check) with the `ncnn` pip package:
-
-```bash
+# Python, no C++ build
 pip install ncnn opencv-python numpy
 python -m training.tools.run_ncnn samples/images \
-    --det models/model.ncnn.param --rec models/demo/ca_lprnet.ncnn.param \
-    --out runs/demo
+    --det models/model.ncnn.param --rec models/demo/ca_lprnet.ncnn.param --out runs/demo
 ```
 
-## Train your own models
+`calpr_app --help` lists every option. `--save-crops DIR` collects rectified plates for labeling.
+Unit tests only, no dependencies: `cmake -B build -DCALPR_BUILD_LIBRARY=OFF`.
 
-All commands run from the repository root.
+</details>
+
+## Training
 
 ```bash
 pip install -r training/requirements.txt
 ```
 
-### 1. Label photos
+| Step | Command |
+|---|---|
+| **1. Label** photos like [`samples/`](samples/README.md) | images + YOLO pose labels (4 corners) + `plates.csv` |
+| **2. Prepare** datasets | `python -m training.tools.prepare_dataset --src samples --out data` |
+| **3. Detector** | `python -m training.detection.train_detector --data data/det --epochs 150` |
+| **4. Synthetic warm-up** | `python -m training.tools.synth_plates --out data/synth/train --count 20000` |
+| **5. Recognizer** | `python -m training.recognition.train --train data/rec/train data/synth/train --repeat 20 1 --val data/rec/val` |
+| **6. Export** | `python -m training.recognition.export_ncnn --weights runs/recognizer/best.pt --out models` |
 
-Put photos in a folder laid out like [`samples/`](samples/README.md): `images/`,
-one YOLO pose label file per photo in `labels/` (one class, four corner
-keypoints in the order top-left, top-right, bottom-right, bottom-left), and
-the plate texts in `plates.csv`. CVAT, Label Studio or Roboflow can export
-the labels ("YOLO pose", 4 keypoints). Then build the training sets:
+<details>
+<summary><b>Details</b></summary>
 
-```bash
-python -m training.tools.prepare_dataset --src samples --out data
+- **Labels:** CVAT, Label Studio or Roboflow export "YOLO pose" with 4 keypoints (top-left, top-right, bottom-right, bottom-left).
+- **Prepare:** splits by photo into `data/det/` and cuts rectified plates into `data/rec/` with the same warp as the C++ pipeline. Below 10 photos, validation reuses the training photos.
+- **Detector:** exports `runs/detector/train/weights/best_ncnn_model/`; copy `model.ncnn.param/.bin` into `models/`. YOLO26 end-to-end output is also supported.
+- **Synthetic plates:** white, black and legacy designs with stickers and frames. Make a validation set with `--count 2000 --seed 1 --out data/synth/val`, pretrain with `python -m training.recognition.train --train data/synth/train --val data/synth/val --epochs 30 --out runs/synth`, then pass `--init runs/synth/best.pt` to step 5.
+- **Recognizer:** `--repeat` sets how often each folder is used per epoch, so a few real plates are not drowned out by synthetic ones. Works on CUDA, Apple Silicon (MPS) and CPU.
+- **More crops:** `calpr_app --save-crops DIR` on any video, or `python -m training.tools.make_rec_crops`.
+
+</details>
+
+## Project structure
+
+<details>
+<summary><b>Show tree</b></summary>
+
+```
+include/calpr/        public headers
+  config.hpp          shared constants (mirrored in training/common/config.py)
+  plate_decoder.hpp   CTC decoding + California layout check
+  geometry.hpp        boxes, NMS, corner ordering, letterbox, homography
+  image.hpp           BGR image view, row crop, perspective warp
+  yolo_pose.hpp       YOLO pose output decoding
+  detector.hpp  recognizer.hpp  pipeline.hpp
+src/                  ncnn implementations + app/main.cpp (OpenCV CLI)
+tests/                C++ and Python unit tests
+training/
+  common/             config, preprocessing, layout rules
+  recognition/        LPRNet model, dataset, training, ncnn export
+  detection/          detector training and ncnn export
+  tools/              dataset prep, crops, synthetic plates, ncnn runner
+samples/              3 labeled photos
+models/               your exported models; demo/ = smoke-test recognizer
+docs/                 README assets and demo results
+.github/workflows/    CI
 ```
 
-This splits by photo into `data/det/` (detector) and cuts rectified plates,
-with the same warp as the C++ pipeline, into `data/rec/` (recognizer). With
-fewer than 10 photos, validation reuses the training photos.
-
-`calpr_app --save-crops DIR` produces more recognizer crops from any video;
-`python -m training.tools.make_rec_crops` cuts crops from an existing detector
-dataset.
-
-### 2. Detector (plate + 4 corners)
-
-```bash
-python -m training.detection.train_detector --data data/det --epochs 150
-```
-
-This trains from `yolo11n-pose.pt` and exports `runs/detector/train/weights/best_ncnn_model/`.
-Copy its `model.ncnn.param` and `model.ncnn.bin` into `models/`. The C++
-decoder also accepts the NMS-free output of YOLO26 models.
-
-### 3. Recognizer warm-up on synthetic plates
-
-```bash
-python -m training.tools.synth_plates --out data/synth/train --count 20000
-python -m training.tools.synth_plates --out data/synth/val --count 2000 --seed 1
-python -m training.recognition.train --train data/synth/train --val data/synth/val \
-    --epochs 30 --out runs/synth
-```
-
-### 4. Recognizer on real plates
-
-Synthetic plates use generic fonts, so always fine-tune on real crops. Mixing
-in the synthetic set keeps a small real set from being overfitted;
-`--repeat` sets how many times each folder is used per epoch:
-
-```bash
-python -m training.recognition.train --train data/rec/train data/synth/train \
-    --repeat 20 1 --val data/rec/val --init runs/synth/best.pt --out runs/recognizer
-python -m training.recognition.export_ncnn --weights runs/recognizer/best.pt --out models
-```
+</details>
 
 ## Tests
 
 ```bash
 (cd build && ctest -C Release)           # C++: decoder, geometry/warp, YOLO decoding
 python tests/test_config_consistency.py  # C++ and Python constants agree
-python tests/test_preprocess.py          # Python preprocessing, layouts, tools, sample labels
+python tests/test_preprocess.py          # preprocessing, layouts, tools, sample labels
 ```
 
-GitHub Actions runs all of them on every push, builds the full app against
-the ncnn release package, reads the sample plates with the demo recognizer,
-and attaches the output to the run (artifact `sample-results`).
+CI runs them on every push, builds the full app against ncnn and reads the sample plates.
 
-## Limitations
+## Notes
 
-- Accuracy depends entirely on the training data; collect plates in varied light, angles and distances.
-- Motorcycle plates (smaller, different layout) and special-interest plates with symbols are not specifically handled; add them to the training data if you need them.
-- The recognizer reads one line of characters, which fits standard California plates.
-- Legacy plates have taller characters that start close to the top of the character band; label their corners on the plate edge (not inside it) so the band keeps the whole characters.
-
-## Responsible use
-
-License plates are personal data. If you deploy this system, check the laws
-that apply to you; in California, automated license plate recognition systems
-are regulated by Civil Code §1798.90.5 and following.
+- Accuracy depends on the training data: collect plates in varied light, angles and distances.
+- Motorcycle and special-interest plates with symbols are not specifically handled.
+- One line of characters is read, which fits standard California plates.
+- License plates are personal data. In California, ALPR systems are regulated by Civil Code §1798.90.5 and following.
 
 ## License
 
-Copyright 2026 Azer Ben Ali. Licensed under the Apache License, Version 2.0
-(see `LICENSE`).
+Copyright 2026 Azer Ben Ali. Licensed under the [Apache License, Version 2.0](LICENSE).

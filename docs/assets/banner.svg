@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="250" viewBox="0 0 960 250" role="img" aria-label="California License Plate Recognition">
+  <style>
+    .card { fill: #0d1117; stroke: #30363d; }
+    .plate { fill: #f5f6f8; stroke: #1f3a93; stroke-width: 4; }
+    .state { font: italic 700 28px Georgia, 'Times New Roman', serif; fill: #c8102e; }
+    .num { font: 700 64px 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif; fill: #1f3a93; letter-spacing: 3px; }
+    .tag { font: 600 15px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #3fb950; }
+    .title { font: 700 40px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #e6edf3; }
+    .sub { font: 400 18px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #8b949e; }
+    .chip { fill: #161b22; stroke: #30363d; }
+    .chiptxt { font: 600 14px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #c9d1d9; }
+    .corner { fill: none; stroke: #3fb950; stroke-width: 4; stroke-linecap: round; animation: pulse 1.5s ease-in-out infinite; }
+    .scan { fill: url(#scanGrad); animation: scan 3s linear infinite; }
+    .cycle { opacity: 0; animation: show 9s infinite both; }
+    .d1 { animation-delay: 0s; }
+    .d2 { animation-delay: 3s; }
+    .d3 { animation-delay: 6s; }
+    @keyframes scan { from { transform: translateX(0); } to { transform: translateX(292px); } }
+    @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+    @keyframes show {
+      0% { opacity: 1; clip-path: inset(0 100% 0 0); }
+      12% { opacity: 1; clip-path: inset(0 0 0 0); }
+      30% { opacity: 1; clip-path: inset(0 0 0 0); }
+      33.3% { opacity: 0; clip-path: inset(0 0 0 0); }
+      100% { opacity: 0; clip-path: inset(0 0 0 0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .scan, .corner { animation: none; }
+      .cycle { animation: none; opacity: 0; }
+      .d1 { opacity: 1; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="scanGrad" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#3fb950" stop-opacity="0"/>
+      <stop offset="0.8" stop-color="#3fb950" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#3fb950" stop-opacity="0.9"/>
+    </linearGradient>
+    <clipPath id="plateClip"><rect x="44" y="44" width="292" height="142" rx="12"/></clipPath>
+  </defs>
+
+  <rect class="card" x="1" y="1" width="958" height="248" rx="18"/>
+
+  <!-- plate -->
+  <rect class="plate" x="40" y="40" width="300" height="150" rx="14"/>
+  <text class="state" x="190" y="80" text-anchor="middle">California</text>
+  <text class="num cycle d1" x="190" y="152" text-anchor="middle" textLength="248" lengthAdjust="spacingAndGlyphs">7ABC123</text>
+  <text class="num cycle d2" x="190" y="152" text-anchor="middle" textLength="248" lengthAdjust="spacingAndGlyphs">123ABC1</text>
+  <text class="num cycle d3" x="190" y="152" text-anchor="middle" textLength="190" lengthAdjust="spacingAndGlyphs">HELLO</text>
+  <g clip-path="url(#plateClip)"><rect class="scan" x="4" y="44" width="40" height="142"/></g>
+
+  <!-- detection corners -->
+  <path class="corner" d="M28 58 V28 H58"/>
+  <path class="corner" d="M322 28 H352 V58"/>
+  <path class="corner" d="M352 172 V202 H322"/>
+  <path class="corner" d="M58 202 H28 V172"/>
+
+  <!-- layout found -->
+  <text class="tag cycle d1" x="190" y="228" text-anchor="middle">✓ 1980–2026 layout · 1ABC234</text>
+  <text class="tag cycle d2" x="190" y="228" text-anchor="middle">✓ 2026+ layout · 123ABC1</text>
+  <text class="tag cycle d3" x="190" y="228" text-anchor="middle">personalized · read as is</text>
+
+  <!-- title -->
+  <text class="title" x="400" y="88">California License</text>
+  <text class="title" x="400" y="136">Plate Recognition</text>
+  <text class="sub" x="402" y="170">Detect · Rectify · Read  —  by Azer Ben Ali</text>
+
+  <g transform="translate(402 192)">
+    <rect class="chip" x="0" y="0" width="70" height="30" rx="15"/><text class="chiptxt" x="35" y="20" text-anchor="middle">C++17</text>
+    <rect class="chip" x="80" y="0" width="70" height="30" rx="15"/><text class="chiptxt" x="115" y="20" text-anchor="middle">ncnn</text>
+    <rect class="chip" x="160" y="0" width="100" height="30" rx="15"/><text class="chiptxt" x="210" y="20" text-anchor="middle">YOLO pose</text>
+    <rect class="chip" x="270" y="0" width="80" height="30" rx="15"/><text class="chiptxt" x="310" y="20" text-anchor="middle">LPRNet</text>
+    <rect class="chip" x="360" y="0" width="80" height="30" rx="15"/><text class="chiptxt" x="400" y="20" text-anchor="middle">PyTorch</text>
+  </g>
+</svg>
