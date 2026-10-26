@@ -1,0 +1,89 @@
+# California License Plate Recognition
+# Copyright 2026 Azer Ben Ali
+# SPDX-License-Identifier: Apache-2.0
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit tests (C++ and Python)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: C++ unit tests (no dependencies)
+        run: |
+          cmake -B build -DCALPR_BUILD_LIBRARY=OFF
+          cmake --build build -j
+          ctest --test-dir build --output-on-failure
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Python tests
+        run: |
+          pip install numpy opencv-python-headless pillow
+          python tests/test_config_consistency.py
+          python tests/test_preprocess.py
+
+  app:
+    name: Build the app and read the sample plates
+    runs-on: ubuntu-24.04
+    env:
+      NCNN_VERSION: "20261020"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install OpenCV and ncnn
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libopencv-dev
+          curl -sSL -o "$RUNNER_TEMP/ncnn.zip" \
+            "https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-ubuntu-2404.zip"
+          unzip -q "$RUNNER_TEMP/ncnn.zip" -d "$RUNNER_TEMP"
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release \
+            -Dncnn_DIR="$RUNNER_TEMP/ncnn-${NCNN_VERSION}-ubuntu-2404/lib/cmake/ncnn"
+          cmake --build build -j
+          ctest --test-dir build --output-on-failure
+
+      - name: Run calpr_app on the sample plates
+        # Full pipeline when a detector is in models/demo/, otherwise the
+        # recognizer alone on the rectified sample plates in docs/results/.
+        run: |
+          mkdir -p out
+          rec="--rec-param models/demo/ca_lprnet.ncnn.param --rec-bin models/demo/ca_lprnet.ncnn.bin"
+          det=""
+          if [ -f models/demo/plate_det.ncnn.param ]; then
+            det="--det-param models/demo/plate_det.ncnn.param --det-bin models/demo/plate_det.ncnn.bin"
+          fi
+          echo "| Input | Expected | Read by calpr_app | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          tail -n +2 samples/plates.csv | while IFS=, read -r image index expected; do
+            name="${image%.*}"
+            if [ -n "$det" ]; then input="samples/images/$image"; else input="docs/results/${name}_plate.png"; fi
+            set +e
+            ./build/calpr_app --image "$input" $det $rec --out "out/$name.jpg" --min-rec-conf 0 > "out/$name.txt"
+            code=$?
+            set -e
+            cat "out/$name.txt"
+            if [ "$code" -ne 0 ] && [ "$code" -ne 3 ]; then
+              echo "calpr_app failed on $input (exit code $code)"; exit 1
+            fi
+            read_text=$(awk 'NR==1 {print $1}' "out/$name.txt")
+            mark=$([ "$read_text" = "$expected" ] && echo "✅" || echo "❌")
+            echo "| $input | $expected | $read_text | $mark |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sample-results
+          path: out/

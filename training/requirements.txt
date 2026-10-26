@@ -1,0 +1,12 @@
+# Recognizer training and export
+torch>=2.2
+numpy>=1.24
+opencv-python>=4.8
+pillow>=10.1
+pnnx
+
+# Running exported models from Python (training/tools/run_ncnn.py)
+ncnn
+
+# Detector training and export only.
+ultralytics>=8.3

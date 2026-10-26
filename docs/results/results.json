@@ -1,0 +1,101 @@
+[
+  {
+    "image": "ca_plate_01.jpg",
+    "plates": [
+      {
+        "text": "9EPW746",
+        "raw": "9EPW746",
+        "format": "Passenger (1980-2026, 1ABC234)",
+        "format_match": true,
+        "rec_conf": 0.9981,
+        "det_conf": 0.6288,
+        "corner_conf": 0.0693,
+        "used_corners": false,
+        "corners": [
+          [
+            209.6,
+            212.1
+          ],
+          [
+            400.8,
+            212.1
+          ],
+          [
+            400.8,
+            315.4
+          ],
+          [
+            209.6,
+            315.4
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "image": "ca_plate_02.jpg",
+    "plates": [
+      {
+        "text": "201AAA1",
+        "raw": "201AAA1",
+        "format": "Passenger (2026+, 123ABC1)",
+        "format_match": true,
+        "rec_conf": 0.9995,
+        "det_conf": 0.9221,
+        "corner_conf": 0.4882,
+        "used_corners": false,
+        "corners": [
+          [
+            820.3,
+            946.6
+          ],
+          [
+            1082.3,
+            946.6
+          ],
+          [
+            1082.3,
+            1078.2
+          ],
+          [
+            820.3,
+            1078.2
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "image": "ca_plate_03.jpg",
+    "plates": [
+      {
+        "text": "PERC50",
+        "raw": "PERC50",
+        "format": "Unrecognized layout (possibly personalized)",
+        "format_match": false,
+        "rec_conf": 0.944,
+        "det_conf": 0.9613,
+        "corner_conf": 0.4789,
+        "used_corners": false,
+        "corners": [
+          [
+            754.2,
+            606.6
+          ],
+          [
+            881.8,
+            606.6
+          ],
+          [
+            881.8,
+            687.2
+          ],
+          [
+            754.2,
+            687.2
+          ]
+        ]
+      }
+    ]
+  }
+]
